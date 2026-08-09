@@ -1,0 +1,20 @@
+### Backend (Java/Maven) ###
+backend/target/
+backend/.mvn/wrapper/maven-wrapper.jar
+*.class
+*.jar
+
+### IDE ###
+.idea/
+*.iml
+.vscode/
+
+### Frontend (θα ενεργοποιηθεί όταν προστεθεί) ###
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+
+### OS ###
+.DS_Store
+
+
