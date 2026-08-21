@@ -1,6 +1,5 @@
 package com.nikoskatrakoulis.courtbookingsystem.dto.response;
 
-import com.nikoskatrakoulis.courtbookingsystem.entity.Booking;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 
