@@ -1,10 +1,14 @@
 package com.nikoskatrakoulis.courtbookingsystem.dto.response;
 
-import lombok.Data;
+
+
+import lombok.AllArgsConstructor;
+import lombok.Getter;
 
 import java.time.LocalDateTime;
 
-@Data
+@Getter
+@AllArgsConstructor
 public class ErrorResponse {
 
     private final LocalDateTime timestamp;
