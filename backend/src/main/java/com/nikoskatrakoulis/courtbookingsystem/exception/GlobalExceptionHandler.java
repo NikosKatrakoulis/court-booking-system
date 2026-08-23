@@ -30,7 +30,8 @@ public class GlobalExceptionHandler {
             CourtNotFoundException.class,
             CourtTypeNotFoundException.class,
             SlotNotFoundException.class,
-            UserNotFoundException.class
+            UserNotFoundException.class,
+            BookingNotFoundException.class
     })
     public ResponseEntity<ErrorResponse> notFoundHandler(RuntimeException ex) {
         ErrorResponse errorResponse = new ErrorResponse(LocalDateTime.now(), HttpStatus.NOT_FOUND.value(), ex.getMessage());
@@ -48,7 +49,9 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({
             SlotAlreadyBookedException.class,
             CourtNotAvailableException.class,
-            CourtTypeNotAvailableException.class
+            CourtTypeNotAvailableException.class,
+            BookingAlreadyCancelledException.class,
+            CancellationNotAllowedException.class
     })
     public ResponseEntity<ErrorResponse> conflictHandler(RuntimeException ex) {
         ErrorResponse errorResponse = new ErrorResponse(LocalDateTime.now(), HttpStatus.CONFLICT.value(), ex.getMessage());
