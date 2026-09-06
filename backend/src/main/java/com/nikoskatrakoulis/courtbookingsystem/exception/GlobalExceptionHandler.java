@@ -51,15 +51,19 @@ public class GlobalExceptionHandler {
             CourtNotAvailableException.class,
             CourtTypeNotAvailableException.class,
             BookingAlreadyCancelledException.class,
-            CancellationNotAllowedException.class
+            CancellationNotAllowedException.class,
+            EmailAlreadyExistsException.class
     })
     public ResponseEntity<ErrorResponse> conflictHandler(RuntimeException ex) {
         ErrorResponse errorResponse = new ErrorResponse(LocalDateTime.now(), HttpStatus.CONFLICT.value(), ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(errorResponse);
     }
 
-    @ExceptionHandler(InvalidCredentialsException.class)
-    public ResponseEntity<ErrorResponse> invalidCredentialsHandler(InvalidCredentialsException ex) {
+    @ExceptionHandler({
+            InvalidCredentialsException.class,
+            InvalidRefreshTokenException.class
+    })
+    public ResponseEntity<ErrorResponse> unauthorizeHandler(RuntimeException ex) {
         ErrorResponse errorResponse = new ErrorResponse(LocalDateTime.now(), HttpStatus.UNAUTHORIZED.value(), ex.getMessage());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
     }
