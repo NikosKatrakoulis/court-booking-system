@@ -62,10 +62,14 @@ public class BookingService {
     }
 
     @Transactional
-    public void cancelBooking(Long bookingId) {
+    public void cancelBooking(Long userId, Long bookingId) {
 
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new BookingNotFoundException("Booking not found with id: " + bookingId));
+
+        if (!booking.getUser().getId().equals(userId)) {
+            throw new BookingNotOwnedException("You are not allowed to cancel this booking");
+        }
 
         if (booking.getStatus() == Status.CANCELLED) {
             throw new BookingAlreadyCancelledException("Booking is already cancelled");
