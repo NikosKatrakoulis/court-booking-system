@@ -34,7 +34,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/courts/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/court_types/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/courts/*/slots").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/courts/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/courts/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/court_types/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PATCH, "/api/court_types/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
