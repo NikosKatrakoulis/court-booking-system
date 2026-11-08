@@ -111,4 +111,26 @@ class BookingServiceTest extends AbstractPostgresTest {
         assertThatThrownBy(() -> bookingService.cancelBooking(user.getId(), booking.getId()))
                 .isInstanceOf(BookingAlreadyCancelledException.class);
     }
+
+    @Test
+    void myBookings_listsOwnBookingsNewestFirst_withCancellableFlag() {
+        User user = createUser("u@example.com");
+        User other = createUser("other@example.com");
+        Court court = createCourt(true);
+        LocalDateTime farStart = LocalDateTime.now().plusHours(30);
+        LocalDateTime nearStart = LocalDateTime.now().plusHours(1);
+        Slot far = createSlot(court, farStart.toLocalDate(), farStart.toLocalTime().withNano(0));
+        Slot near = createSlot(court, nearStart.toLocalDate(), nearStart.toLocalTime().withNano(0));
+        confirmedBooking(user, far);
+        confirmedBooking(user, near);
+        confirmedBooking(other, createSlot(court, farStart.toLocalDate().plusDays(1), java.time.LocalTime.of(10, 0)));
+
+        var result = bookingService.myBookings(user.getId());
+
+        assertThat(result).hasSize(2);
+        assertThat(result.get(0).getSlotId()).isEqualTo(far.getId());
+        assertThat(result.get(0).isCancellable()).isTrue();
+        assertThat(result.get(1).isCancellable()).isFalse();
+        assertThat(result.get(0).getPrice()).isNotNull();
+    }
 }

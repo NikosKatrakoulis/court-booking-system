@@ -18,6 +18,16 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
 
      Optional<Booking> findBySlot_IdAndStatus(Long id, Status status);
 
+     @Query("""
+                SELECT b FROM Booking b
+                JOIN FETCH b.slot s
+                JOIN FETCH s.court c
+                JOIN FETCH c.courtType
+                WHERE b.user.id = :userId
+                ORDER BY s.date DESC, s.startTime DESC
+            """)
+     List<Booking> findAllByUserWithDetails(@Param("userId") Long userId);
+
      /** Most booked start times (CONFIRMED only) in a date range; pass a PageRequest to limit the result. */
      @Query("""
                 SELECT s.startTime AS startTime, COUNT(b.id) AS bookings
