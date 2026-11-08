@@ -2,7 +2,12 @@
 
 REST API for booking padel / tennis courts. The interesting part is **correctness under concurrency**: when many users try to book the same slot at the same moment, exactly one wins, and this is verified by automated tests against a real PostgreSQL.
 
-> Backend only (Spring Boot). There is no frontend yet.
+**Stack:** Spring Boot REST API + React single-page app (`backend/` and `frontend/`).
+
+<p align="center">
+  <img src="docs/screenshots/book.png" width="49%" alt="Booking page" />
+  <img src="docs/screenshots/waitlist.png" width="49%" alt="Waitlist offer with countdown" />
+</p>
 
 ## Features
 
@@ -16,7 +21,9 @@ REST API for booking padel / tennis courts. The interesting part is **correctnes
 
 ## Tech stack
 
-Java 17 · Spring Boot 4.1 (Web, Data JPA, Security, Validation) · PostgreSQL 16 · Flyway · JJWT · Docker Compose · JUnit 5 · Testcontainers · AssertJ · Awaitility
+Backend: Java 17 · Spring Boot 4.1 (Web, Data JPA, Security, Validation) · PostgreSQL 16 · Flyway · JJWT · Docker Compose · JUnit 5 · Testcontainers · AssertJ · Awaitility
+
+Frontend: React 18 · Vite · React Router · Axios · plain CSS (design tokens, dark mode, responsive)
 
 ## How concurrency is handled
 
@@ -49,7 +56,7 @@ Domain decisions: slots are concrete rows (availability = no `CONFIRMED` booking
 
 ## Running locally
 
-Requirements: JDK 17, Docker.
+Requirements: JDK 17, Node 20+, Docker.
 
 ```bash
 cp .env.example .env        # then fill in real values (see below); .env is gitignored
@@ -57,6 +64,14 @@ docker compose up -d        # PostgreSQL on 127.0.0.1:5436
 set -a; source .env; set +a # Spring Boot does not read .env itself
 cd backend && ./mvnw spring-boot:run
 ```
+
+In a second terminal start the frontend (Vite proxies `/api` to `localhost:8080`, so no CORS setup is needed):
+
+```bash
+cd frontend && npm install && npm run dev   # http://localhost:5173
+```
+
+Sign in with the `ADMIN_EMAIL` / `ADMIN_PASSWORD` you set in `.env` to manage courts, or create a normal account on the login screen.
 
 Flyway creates the schema on startup, an admin user is seeded from `ADMIN_EMAIL` / `ADMIN_PASSWORD`, and slots are generated for existing courts.
 
@@ -82,7 +97,9 @@ Flyway creates the schema on startup, an admin user is seeded from `ADMIN_EMAIL`
 | `POST`/`PATCH /api/courts`, `/api/court_types` | ADMIN | manage |
 | `GET /api/courts/{id}/slots?date=YYYY-MM-DD` | public | slots with availability |
 | `POST /api/bookings` | user | body `{"slotId": 1}`; optional `Idempotency-Key` header |
+| `GET /api/bookings` | user | my bookings, each with a server-computed `cancellable` flag |
 | `PATCH /api/bookings/{id}` | owner | cancel (not within 2 h of start) |
+| `GET /api/users/me` | user | current profile |
 | `POST /api/slots/{slotId}/waitlist` | user | join the waitlist of a booked slot |
 | `GET /api/waitlist`, `DELETE /api/waitlist/{id}` | user | my active entries / leave |
 | `GET /api/notifications` | user | my notifications |
@@ -91,6 +108,19 @@ Flyway creates the schema on startup, an admin user is seeded from `ADMIN_EMAIL`
 | `GET /api/admin/analytics/popular-slots?from=&to=&limit=` | ADMIN | most booked start times |
 
 Errors share one JSON shape (`timestamp`, `status`, `error`); validation errors list the failing fields.
+
+## Frontend
+
+| | |
+|---|---|
+| ![Booking modal](docs/screenshots/booking-modal.png) | ![My bookings](docs/screenshots/my-bookings.png) |
+| ![Admin analytics](docs/screenshots/admin-analytics.png) | ![Admin courts](docs/screenshots/admin-courts.png) |
+| ![Dark mode](docs/screenshots/book-dark.png) | ![Mobile](docs/screenshots/book-mobile.png) |
+
+- Booking flow with a per-modal `Idempotency-Key`, so a double-click or retry never books twice.
+- Waitlist screen with a live countdown for offers; a badge in the navbar signals "your turn".
+- Access tokens are refreshed silently shortly before they expire; refresh tokens rotate on every use.
+- Light and dark theme follow the system setting; layout works down to phone width.
 
 ## Tests
 
@@ -111,7 +141,7 @@ Integration tests run against a **real PostgreSQL** rather than H2, because row 
 
 ## Known limitations
 
-- No HTTP-level (MockMvc) tests; controllers and security rules were verified manually.
+- No HTTP-level (MockMvc) or frontend component tests; controllers, security rules and the UI flows were verified manually.
 - Notifications are stored and logged only (no real e-mail).
 - Failed booking attempts are not stored under their idempotency key, only successful ones; a retried failure simply re-executes.
 - An expired waitlist offer is released at the next job run (every minute), but already stops blocking other bookers immediately.

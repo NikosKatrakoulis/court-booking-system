@@ -1,5 +1,6 @@
 package com.nikoskatrakoulis.courtbookingsystem.service;
 
+import com.nikoskatrakoulis.courtbookingsystem.dto.response.BookingResponse;
 import com.nikoskatrakoulis.courtbookingsystem.entity.*;
 import com.nikoskatrakoulis.courtbookingsystem.exception.*;
 import com.nikoskatrakoulis.courtbookingsystem.repository.IdempotencyKeyRepository;
@@ -7,17 +8,20 @@ import com.nikoskatrakoulis.courtbookingsystem.repository.BookingRepository;
 import com.nikoskatrakoulis.courtbookingsystem.repository.CourtRepository;
 import com.nikoskatrakoulis.courtbookingsystem.repository.SlotRepository;
 import com.nikoskatrakoulis.courtbookingsystem.repository.UserRepository;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class BookingService {
+
+    private static final Duration MINIMUM_CANCELLATION_NOTICE = Duration.ofHours(2);
 
     private final SlotRepository slotRepository;
     private final BookingRepository bookingRepository;
@@ -120,6 +124,19 @@ public class BookingService {
         return true;
     }
 
+    @Transactional(readOnly = true)
+    public List<BookingResponse> myBookings(Long userId) {
+        LocalDateTime now = LocalDateTime.now();
+        return bookingRepository.findAllByUserWithDetails(userId).stream().map(b -> {
+            Slot s = b.getSlot();
+            boolean cancellable = b.getStatus() == Status.CONFIRMED
+                    && Duration.between(now, LocalDateTime.of(s.getDate(), s.getStartTime())).compareTo(MINIMUM_CANCELLATION_NOTICE) >= 0;
+            return new BookingResponse(b.getId(), s.getId(), s.getCourt().getName(), s.getDate(), s.getStartTime(),
+                    s.getEndTime(), s.getCourt().getCourtType().getPricePerSlot(), b.getStatus().name(),
+                    cancellable, b.getCreatedAt(), b.getCancelledAt());
+        }).toList();
+    }
+
     @Transactional
     public void cancelBooking(Long userId, Long bookingId) {
 
@@ -146,9 +163,7 @@ public class BookingService {
         );
 
         Duration timeUntilSlot = Duration.between(LocalDateTime.now(), slotDateTime);
-        Duration minimumNotice = Duration.ofHours(2);
-
-        if (timeUntilSlot.compareTo(minimumNotice) < 0) {
+        if (timeUntilSlot.compareTo(MINIMUM_CANCELLATION_NOTICE) < 0) {
             throw new CancellationNotAllowedException("Cannot cancel less than 2 hours before");
         }
 

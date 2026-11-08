@@ -1,6 +1,7 @@
 package com.nikoskatrakoulis.courtbookingsystem.controller;
 
 import com.nikoskatrakoulis.courtbookingsystem.dto.request.BookingCreateRequest;
+import com.nikoskatrakoulis.courtbookingsystem.dto.response.BookingResponse;
 import com.nikoskatrakoulis.courtbookingsystem.entity.User;
 import com.nikoskatrakoulis.courtbookingsystem.service.BookingService;
 import jakarta.validation.Valid;
@@ -9,6 +10,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/bookings")
@@ -34,6 +37,11 @@ public class BookingController {
             response.header("Idempotent-Replayed", "true");
         }
         return response.build();
+    }
+
+    @GetMapping
+    public List<BookingResponse> myBookings(@AuthenticationPrincipal User user) {
+        return bookingService.myBookings(user.getId());
     }
 
     @PatchMapping("/{id}")
