@@ -40,8 +40,8 @@ public class GlobalExceptionHandler {
     }
 
 
-    @ExceptionHandler(SlotInThePastException.class)
-    public ResponseEntity<ErrorResponse> badRequestHandler(SlotInThePastException ex) {
+    @ExceptionHandler({SlotInThePastException.class, InvalidDateRangeException.class})
+    public ResponseEntity<ErrorResponse> badRequestHandler(RuntimeException ex) {
         ErrorResponse errorResponse = new ErrorResponse(LocalDateTime.now(), HttpStatus.BAD_REQUEST.value(), ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
     }

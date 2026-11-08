@@ -1,6 +1,7 @@
 package com.nikoskatrakoulis.courtbookingsystem.repository;
 
 import com.nikoskatrakoulis.courtbookingsystem.entity.Slot;
+import com.nikoskatrakoulis.courtbookingsystem.repository.projection.CourtOccupancyProjection;
 import com.nikoskatrakoulis.courtbookingsystem.repository.projection.SlotAvailabilityProjection;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -27,6 +28,19 @@ public interface SlotRepository extends JpaRepository<Slot, Long> {
             @Param("courtId") Long courtId,
             @Param("date") LocalDate date
     );
+
+    /** Slots vs CONFIRMED bookings per court in a date range. LEFT JOIN keeps unbooked slots in the count. */
+    @Query("""
+                SELECT c.id AS courtId, c.name AS courtName,
+                       COUNT(s.id) AS totalSlots, COUNT(b.id) AS bookedSlots
+                FROM Slot s
+                JOIN s.court c
+                LEFT JOIN Booking b ON b.slot.id = s.id AND b.status = 'CONFIRMED'
+                WHERE s.date BETWEEN :from AND :to
+                GROUP BY c.id, c.name
+                ORDER BY c.name
+            """)
+    List<CourtOccupancyProjection> findOccupancy(@Param("from") LocalDate from, @Param("to") LocalDate to);
 
     List<Slot> findByCourt_IdAndDateBetween(Long courtId, LocalDate from, LocalDate to);
 
