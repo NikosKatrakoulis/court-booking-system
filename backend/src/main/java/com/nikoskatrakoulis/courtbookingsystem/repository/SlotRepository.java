@@ -28,6 +28,8 @@ public interface SlotRepository extends JpaRepository<Slot, Long> {
             @Param("date") LocalDate date
     );
 
+    List<Slot> findByCourt_IdAndDateBetween(Long courtId, LocalDate from, LocalDate to);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
                 SELECT s
