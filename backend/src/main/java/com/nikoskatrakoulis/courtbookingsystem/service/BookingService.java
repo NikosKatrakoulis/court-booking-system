@@ -21,6 +21,7 @@ public class BookingService {
     private final SlotRepository slotRepository;
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
+    private final WaitlistService waitlistService;
 
     @Transactional
     public void createBooking(Long userId, Long slotId) {
@@ -50,6 +51,9 @@ public class BookingService {
             throw new SlotAlreadyBookedException("Slot is already booked");
         }
 
+        // slot is free of bookings, but may be reserved for a waitlisted user (throws if so)
+        waitlistService.onBookingAttempt(userId, slotId);
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found with id: " + userId));
 
@@ -64,6 +68,12 @@ public class BookingService {
     @Transactional
     public void cancelBooking(Long userId, Long bookingId) {
 
+        Long slotId = bookingRepository.findSlotIdById(bookingId)
+                .orElseThrow(() -> new BookingNotFoundException("Booking not found with id: " + bookingId));
+        // Lock the slot FIRST (same order as createBooking/waitlist), then read the booking, so we
+        // see its latest state and two concurrent cancels cannot both succeed.
+        Slot lockedSlot = slotRepository.findByIdWithLock(slotId)
+                .orElseThrow(() -> new SlotNotFoundException("Slot not found with id: " + slotId));
         Booking booking = bookingRepository.findById(bookingId)
                 .orElseThrow(() -> new BookingNotFoundException("Booking not found with id: " + bookingId));
 
@@ -91,5 +101,8 @@ public class BookingService {
         booking.setCancelledAt(LocalDateTime.now());
 
         bookingRepository.save(booking);
+
+        // the slot is free again: offer it to the first person on the waitlist
+        waitlistService.offerToNext(lockedSlot);
     }
 }

@@ -31,7 +31,8 @@ public class GlobalExceptionHandler {
             CourtTypeNotFoundException.class,
             SlotNotFoundException.class,
             UserNotFoundException.class,
-            BookingNotFoundException.class
+            BookingNotFoundException.class,
+            WaitlistEntryNotFoundException.class
     })
     public ResponseEntity<ErrorResponse> notFoundHandler(RuntimeException ex) {
         ErrorResponse errorResponse = new ErrorResponse(LocalDateTime.now(), HttpStatus.NOT_FOUND.value(), ex.getMessage());
@@ -52,7 +53,11 @@ public class GlobalExceptionHandler {
             CourtTypeNotAvailableException.class,
             BookingAlreadyCancelledException.class,
             CancellationNotAllowedException.class,
-            EmailAlreadyExistsException.class
+            EmailAlreadyExistsException.class,
+            AlreadyOnWaitlistException.class,
+            SlotStillAvailableException.class,
+            SlotReservedException.class,
+            WaitlistEntryNotActiveException.class
     })
     public ResponseEntity<ErrorResponse> conflictHandler(RuntimeException ex) {
         ErrorResponse errorResponse = new ErrorResponse(LocalDateTime.now(), HttpStatus.CONFLICT.value(), ex.getMessage());
@@ -68,8 +73,8 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
     }
 
-    @ExceptionHandler(BookingNotOwnedException.class)
-    public ResponseEntity<ErrorResponse> forbiddenHandler(BookingNotOwnedException ex) {
+    @ExceptionHandler({BookingNotOwnedException.class, WaitlistEntryNotOwnedException.class})
+    public ResponseEntity<ErrorResponse> forbiddenHandler(RuntimeException ex) {
         ErrorResponse errorResponse = new ErrorResponse(LocalDateTime.now(), HttpStatus.FORBIDDEN.value(), ex.getMessage());
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(errorResponse);
     }
