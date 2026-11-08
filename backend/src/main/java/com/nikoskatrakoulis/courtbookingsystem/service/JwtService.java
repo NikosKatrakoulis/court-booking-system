@@ -20,6 +20,9 @@ public class JwtService {
             @Value("${jwt.secret}") String secret,
             @Value("${jwt.access-token-expiration}") long accessTokenExpiration
     ) {
+        if (secret == null || secret.getBytes().length < 32) {
+            throw new IllegalStateException("JWT_SECRET must be at least 32 bytes long");
+        }
         this.secretKey = Keys.hmacShaKeyFor(secret.getBytes());
         this.accessTokenExpiration = accessTokenExpiration;
     }

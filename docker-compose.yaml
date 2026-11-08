@@ -4,10 +4,10 @@ services:
     container_name: court-booking-db
     environment:
       POSTGRES_DB: courtbooking
-      POSTGRES_USER: courtuser
-      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_USER: ${DB_USERNAME:-courtuser}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set (see .env.example)}
     ports:
-      - "5436:5432"
+      - "127.0.0.1:5436:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
 
