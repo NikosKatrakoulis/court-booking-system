@@ -159,7 +159,7 @@ public class WaitlistService {
                     next.setOfferExpiresAt(expiresAt);
                     waitlistRepository.save(next);
                     notifyUser(next.getUser().getId(), describe(slot) + " is now available for you. Book it within "
-                            + offerMinutes + " minutes (POST /api/bookings) or the offer passes to the next person.");
+                            + offerMinutes + " minutes or the offer passes to the next person.");
                 });
     }
 
