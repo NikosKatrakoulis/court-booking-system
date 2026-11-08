@@ -40,7 +40,7 @@ public class GlobalExceptionHandler {
     }
 
 
-    @ExceptionHandler({SlotInThePastException.class, InvalidDateRangeException.class})
+    @ExceptionHandler({SlotInThePastException.class, InvalidDateRangeException.class, InvalidIdempotencyKeyException.class})
     public ResponseEntity<ErrorResponse> badRequestHandler(RuntimeException ex) {
         ErrorResponse errorResponse = new ErrorResponse(LocalDateTime.now(), HttpStatus.BAD_REQUEST.value(), ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
@@ -57,7 +57,8 @@ public class GlobalExceptionHandler {
             AlreadyOnWaitlistException.class,
             SlotStillAvailableException.class,
             SlotReservedException.class,
-            WaitlistEntryNotActiveException.class
+            WaitlistEntryNotActiveException.class,
+            IdempotencyKeyReusedException.class
     })
     public ResponseEntity<ErrorResponse> conflictHandler(RuntimeException ex) {
         ErrorResponse errorResponse = new ErrorResponse(LocalDateTime.now(), HttpStatus.CONFLICT.value(), ex.getMessage());
