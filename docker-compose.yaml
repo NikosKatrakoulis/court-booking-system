@@ -2,6 +2,7 @@ services:
   db:
     image: postgres:16
     container_name: court-booking-db
+    restart: unless-stopped
     environment:
       POSTGRES_DB: courtbooking
       POSTGRES_USER: ${DB_USERNAME:-courtuser}
@@ -10,6 +11,38 @@ services:
       - "127.0.0.1:5436:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-courtuser} -d courtbooking"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    container_name: court-booking-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_URL: jdbc:postgresql://db:5432/courtbooking
+      DB_USERNAME: ${DB_USERNAME:-courtuser}
+      DB_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD must be set (see .env.example)}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set (see .env.example)}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?ADMIN_EMAIL must be set (see .env.example)}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?ADMIN_PASSWORD must be set (see .env.example)}
+      TZ: ${TZ:-Europe/Athens}
+    ports:
+      - "127.0.0.1:8080:8080"
+
+  frontend:
+    build: ./frontend
+    container_name: court-booking-frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "3000:80"
 
 volumes:
   pgdata:

@@ -12,6 +12,7 @@ Spring Boot · PostgreSQL · React · JWT Authentication
 [![Vite](https://img.shields.io/badge/Vite-5-646CFF?style=flat&logo=vite&logoColor=white)](https://vitejs.dev/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
 [![Flyway](https://img.shields.io/badge/Flyway-migrations-CC0200?style=flat&logo=flyway&logoColor=white)](https://flywaydb.org/)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat&logo=docker&logoColor=white)](https://www.docker.com/)
 [![Testcontainers](https://img.shields.io/badge/Testcontainers-integration%20tests-2496ED?style=flat&logo=docker&logoColor=white)](https://testcontainers.com/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](#-license)
 
@@ -169,7 +170,7 @@ The first admin is created on startup from environment variables (idempotent, ne
 | **HTTP client** | Axios |
 | **Icons** | lucide-react |
 | **Styling** | Plain CSS with design tokens, dark mode, responsive layout |
-| **Containerization** | Docker / Docker Compose (PostgreSQL) |
+| **Containerization** | Docker / Docker Compose (multi-stage builds: database + backend + frontend served by nginx) |
 
 ---
 
@@ -178,9 +179,10 @@ The first admin is created on startup from environment variables (idempotent, ne
 ```
 court-booking-system/
 ├── assets/                          # README screenshots
-├── docker-compose.yaml              # Local PostgreSQL container
+├── docker-compose.yaml              # Database + backend + frontend, one command
 ├── .env.example                     # Required environment variables (placeholders only)
 ├── backend/                         # Spring Boot REST API
+│   ├── Dockerfile                    # Multi-stage Maven build -> slim JRE image
 │   ├── src/main/java/com/nikoskatrakoulis/courtbookingsystem/
 │   │   ├── config/                   # SecurityConfig, AdminSeeder, Async/Scheduling config
 │   │   ├── controller/               # Auth, Booking, Court, CourtType, Slot, Waitlist, Notification, Admin*
@@ -206,6 +208,8 @@ court-booking-system/
     │   ├── utils/                    # date and money formatting
     │   ├── App.jsx
     │   └── main.jsx
+    ├── Dockerfile                    # Node build -> nginx
+    ├── nginx.conf                    # SPA fallback + /api proxy to the backend
     ├── index.html
     ├── vite.config.js
     └── package.json
@@ -217,9 +221,8 @@ court-booking-system/
 
 ### Prerequisites
 
-- [Java 17+](https://adoptium.net/)
-- [Node.js 20+](https://nodejs.org/) and npm
-- [Docker](https://www.docker.com/) & Docker Compose
+- [Docker](https://www.docker.com/) & Docker Compose (all you need to run the app)
+- [Java 17+](https://adoptium.net/) and [Node.js 20+](https://nodejs.org/) only for local development
 
 ### 1. Clone the repository
 
@@ -249,20 +252,38 @@ openssl rand -base64 48   # JWT_SECRET
 | `JWT_SECRET` | yes | at least 32 bytes |
 | `ADMIN_EMAIL`, `ADMIN_PASSWORD` | yes | first admin, created only if the email does not exist yet |
 | `DB_USERNAME`, `DB_URL` | no | default `courtuser` and the local docker database |
+| `TZ` | no | backend container time zone, default `Europe/Athens` |
 | `JWT_ACCESS_EXPIRATION`, `JWT_REFRESH_EXPIRATION` | no | milliseconds; default 15 min / 7 days |
 | `SLOTS_OPENING_TIME`, `SLOTS_CLOSING_TIME`, `SLOTS_HORIZON_DAYS` | no | default `09:00`, `23:00`, `14` |
 | `WAITLIST_OFFER_MINUTES` | no | default `30` |
 | `IDEMPOTENCY_RETENTION_HOURS` | no | default `24` |
 
-### 3. Start the database
+### 3. Start everything with Docker
 
 ```bash
-docker compose up -d
+docker compose up --build -d
 ```
 
-This starts PostgreSQL 16 on `127.0.0.1:5436` (bound to localhost only) using the credentials from your `.env`.
+The first build takes a few minutes. Then open:
 
-### 4. Run the backend
+- **App:** `http://localhost:3000`
+- **API:** `http://localhost:8080`
+
+Sign in with the `ADMIN_EMAIL` / `ADMIN_PASSWORD` from your `.env`, or create a normal account on the login screen. Stop everything with `docker compose down` (your data stays in the `pgdata` volume; add `-v` to wipe it).
+
+The database is published on `127.0.0.1:5436` only. The backend container uses the `TZ` variable (default `Europe/Athens`) for slot hours and "in the past" checks.
+
+### Alternative: local development (hot reload)
+
+Run only the database in Docker and the apps on your machine.
+
+#### Start the database
+
+```bash
+docker compose up -d db
+```
+
+#### Run the backend
 
 ```bash
 set -a; source .env; set +a      # Spring Boot does not read .env by itself
@@ -274,7 +295,7 @@ Flyway applies all migrations on startup, the admin user is seeded from `ADMIN_E
 
 > In IntelliJ, put the same variables in the Run Configuration instead.
 
-### 5. Run the frontend
+#### Run the frontend
 
 ```bash
 cd frontend
