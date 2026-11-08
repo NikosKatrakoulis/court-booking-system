@@ -2,6 +2,7 @@ package com.nikoskatrakoulis.courtbookingsystem.service;
 
 import com.nikoskatrakoulis.courtbookingsystem.entity.*;
 import com.nikoskatrakoulis.courtbookingsystem.exception.*;
+import com.nikoskatrakoulis.courtbookingsystem.repository.IdempotencyKeyRepository;
 import com.nikoskatrakoulis.courtbookingsystem.repository.BookingRepository;
 import com.nikoskatrakoulis.courtbookingsystem.repository.CourtRepository;
 import com.nikoskatrakoulis.courtbookingsystem.repository.SlotRepository;
@@ -22,9 +23,29 @@ public class BookingService {
     private final BookingRepository bookingRepository;
     private final UserRepository userRepository;
     private final WaitlistService waitlistService;
+    private final IdempotencyKeyRepository idempotencyKeyRepository;
 
+    // @Transactional here too: a call from inside the same class bypasses the Spring proxy,
+    // so the annotation on the 3-arg method would NOT apply to this call path.
     @Transactional
     public void createBooking(Long userId, Long slotId) {
+        createBooking(userId, slotId, null);
+    }
+
+    /**
+     * @param idempotencyKey optional client-supplied key; a repeat of the same request returns
+     *                       success without creating a second booking
+     * @return true if this call was a replay of an already-processed request
+     */
+    @Transactional
+    public boolean createBooking(Long userId, Long slotId, String idempotencyKey) {
+
+        validateKey(idempotencyKey);
+        // 1st check, before anything else: a retry of an old success must replay even if the slot has since started.
+        Optional<IdempotencyKey> known = findKey(userId, idempotencyKey);
+        if (known.isPresent()) {
+            return replay(known.get(), slotId);
+        }
 
         Slot slot = slotRepository.findById(slotId)
                 .orElseThrow(() -> new SlotNotFoundException("Slot not found with id: " + slotId));
@@ -46,6 +67,13 @@ public class BookingService {
         Slot lockedSlot = slotRepository.findByIdWithLock(slotId)
                 .orElseThrow(() -> new SlotNotFoundException("Slot not found with id: " + slotId));
 
+        // 2nd check, UNDER the slot lock: a concurrent duplicate that was waiting on the lock now sees
+        // the key committed by the winner and replays instead of failing with "already booked".
+        known = findKey(userId, idempotencyKey);
+        if (known.isPresent()) {
+            return replay(known.get(), slotId);
+        }
+
         Optional<Booking> existingBooking = bookingRepository.findBySlot_IdAndStatus(slotId, Status.CONFIRMED);
         if (existingBooking.isPresent()) {
             throw new SlotAlreadyBookedException("Slot is already booked");
@@ -62,7 +90,34 @@ public class BookingService {
         newBooking.setSlot(lockedSlot);
         newBooking.setStatus(Status.CONFIRMED);
 
-        bookingRepository.save(newBooking);
+        Booking saved = bookingRepository.save(newBooking);
+
+        if (idempotencyKey != null) {
+            IdempotencyKey record = new IdempotencyKey();
+            record.setUser(user);
+            record.setKeyValue(idempotencyKey);
+            record.setSlot(lockedSlot);
+            record.setBooking(saved);
+            idempotencyKeyRepository.save(record);
+        }
+        return false;
+    }
+
+    private void validateKey(String key) {
+        if (key != null && (key.isBlank() || key.length() > 100)) {
+            throw new InvalidIdempotencyKeyException("Idempotency-Key must be 1-100 characters");
+        }
+    }
+
+    private Optional<IdempotencyKey> findKey(Long userId, String key) {
+        return key == null ? Optional.empty() : idempotencyKeyRepository.findByUser_IdAndKeyValue(userId, key);
+    }
+
+    private boolean replay(IdempotencyKey known, Long requestedSlotId) {
+        if (!known.getSlot().getId().equals(requestedSlotId)) {
+            throw new IdempotencyKeyReusedException("Idempotency-Key was already used for a different request");
+        }
+        return true;
     }
 
     @Transactional
