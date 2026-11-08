@@ -24,7 +24,8 @@ import java.time.LocalTime;
         "jwt.secret=test-only-secret-test-only-secret-test-only-secret",
         "admin.seed.email=test-admin@example.com",
         "admin.seed.password=test-only-password",
-        "slots.generation-cron=-"   // disable the cron job during tests
+        "slots.generation-cron=-",   // disable cron jobs during tests; tests call the services directly
+        "waitlist.expiry-check-cron=-"
 })
 public abstract class AbstractPostgresTest {
 
@@ -47,10 +48,14 @@ public abstract class AbstractPostgresTest {
     @Autowired protected CourtTypeRepository courtTypeRepository;
     @Autowired protected UserRepository userRepository;
     @Autowired protected RefreshTokenRepository refreshTokenRepository;
+    @Autowired protected WaitlistEntryRepository waitlistEntryRepository;
+    @Autowired protected NotificationRepository notificationRepository;
 
     /** Tests commit real transactions (needed for multi-thread tests), so we clean up by hand. */
     @BeforeEach
     void cleanDatabase() {
+        notificationRepository.deleteAllInBatch();
+        waitlistEntryRepository.deleteAllInBatch();
         bookingRepository.deleteAllInBatch();
         refreshTokenRepository.deleteAllInBatch();
         slotRepository.deleteAllInBatch();
